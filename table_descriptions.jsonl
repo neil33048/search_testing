@@ -1,0 +1,162 @@
+[
+  {
+    "table_name": "sales_db.transactions.orders",
+    "description": "Contains all customer orders including order details, timestamps, and payment information",
+    "key_columns": ["order_id", "customer_id", "order_date", "total_amount", "status"]
+  },
+  {
+    "table_name": "sales_db.transactions.order_items",
+    "description": "Line items for each order showing individual products purchased, quantities, and prices",
+    "key_columns": ["order_item_id", "order_id", "product_id", "quantity", "unit_price"]
+  },
+  {
+    "table_name": "sales_db.customers.profiles",
+    "description": "Customer profile information including contact details and account creation date",
+    "key_columns": ["customer_id", "email", "full_name", "signup_date", "country"]
+  },
+  {
+    "table_name": "sales_db.customers.addresses",
+    "description": "Shipping and billing addresses associated with customer accounts",
+    "key_columns": ["address_id", "customer_id", "address_type", "street_address", "city", "postal_code"]
+  },
+  {
+    "table_name": "inventory.warehouse.products",
+    "description": "Product catalog with SKUs, names, categories, and pricing information",
+    "key_columns": ["product_id", "sku", "product_name", "category", "list_price"]
+  },
+  {
+    "table_name": "inventory.warehouse.stock_levels",
+    "description": "Current inventory levels by warehouse location and product",
+    "key_columns": ["warehouse_id", "product_id", "quantity_on_hand", "last_updated"]
+  },
+  {
+    "table_name": "inventory.warehouse.locations",
+    "description": "Physical warehouse locations and their operating details",
+    "key_columns": ["warehouse_id", "warehouse_name", "city", "state", "capacity"]
+  },
+  {
+    "table_name": "hr_system.employees.staff",
+    "description": "Employee records including personal information, job titles, and department assignments",
+    "key_columns": ["employee_id", "full_name", "email", "department_id", "hire_date", "job_title"]
+  },
+  {
+    "table_name": "hr_system.employees.salaries",
+    "description": "Historical salary information for all employees with effective dates",
+    "key_columns": ["employee_id", "salary_amount", "effective_date", "currency"]
+  },
+  {
+    "table_name": "hr_system.organization.departments",
+    "description": "Organizational departments with managers and budget allocations",
+    "key_columns": ["department_id", "department_name", "manager_id", "annual_budget"]
+  },
+  {
+    "table_name": "hr_system.timekeeping.attendance",
+    "description": "Daily attendance records showing clock in/out times for hourly employees",
+    "key_columns": ["attendance_id", "employee_id", "date", "clock_in", "clock_out", "hours_worked"]
+  },
+  {
+    "table_name": "analytics.web.page_views",
+    "description": "Website page view events with user sessions and referral sources",
+    "key_columns": ["event_id", "session_id", "user_id", "page_url", "timestamp", "referrer"]
+  },
+  {
+    "table_name": "analytics.web.conversions",
+    "description": "Conversion events tracking completed purchases and sign-ups",
+    "key_columns": ["conversion_id", "session_id", "user_id", "conversion_type", "revenue", "timestamp"]
+  },
+  {
+    "table_name": "analytics.mobile.app_events",
+    "description": "Mobile application user interaction events and screen views",
+    "key_columns": ["event_id", "user_id", "event_name", "device_type", "app_version", "timestamp"]
+  },
+  {
+    "table_name": "analytics.marketing.campaigns",
+    "description": "Marketing campaign metadata including budget, channels, and date ranges",
+    "key_columns": ["campaign_id", "campaign_name", "channel", "start_date", "end_date", "budget"]
+  },
+  {
+    "table_name": "analytics.marketing.campaign_performance",
+    "description": "Daily performance metrics for marketing campaigns including clicks, impressions, and conversions",
+    "key_columns": ["campaign_id", "date", "impressions", "clicks", "conversions", "spend"]
+  },
+  {
+    "table_name": "finance.accounting.invoices",
+    "description": "Customer invoices with due dates, amounts, and payment status",
+    "key_columns": ["invoice_id", "customer_id", "invoice_date", "due_date", "total_amount", "status"]
+  },
+  {
+    "table_name": "finance.accounting.payments",
+    "description": "Payment transactions received from customers against invoices",
+    "key_columns": ["payment_id", "invoice_id", "payment_date", "amount", "payment_method"]
+  },
+  {
+    "table_name": "finance.accounting.expenses",
+    "description": "Company expense records by category and department",
+    "key_columns": ["expense_id", "department_id", "category", "amount", "expense_date", "description"]
+  },
+  {
+    "table_name": "finance.budgeting.forecasts",
+    "description": "Financial forecasts by department and quarter",
+    "key_columns": ["forecast_id", "department_id", "year", "quarter", "projected_revenue", "projected_costs"]
+  },
+  {
+    "table_name": "support.tickets.issues",
+    "description": "Customer support tickets tracking issues and resolution status",
+    "key_columns": ["ticket_id", "customer_id", "subject", "priority", "status", "created_at", "assigned_to"]
+  },
+  {
+    "table_name": "support.tickets.comments",
+    "description": "Comments and responses on support tickets from agents and customers",
+    "key_columns": ["comment_id", "ticket_id", "author_id", "comment_text", "created_at", "is_internal"]
+  },
+  {
+    "table_name": "support.knowledge.articles",
+    "description": "Help center articles and documentation for customer self-service",
+    "key_columns": ["article_id", "title", "category", "content", "view_count", "last_updated"]
+  },
+  {
+    "table_name": "product.features.releases",
+    "description": "Product release information with version numbers and deployment dates",
+    "key_columns": ["release_id", "version", "release_date", "release_notes", "is_major"]
+  },
+  {
+    "table_name": "product.features.usage_stats",
+    "description": "Feature adoption and usage metrics by user cohort",
+    "key_columns": ["feature_id", "date", "active_users", "total_uses", "avg_session_duration"]
+  },
+  {
+    "table_name": "logistics.shipping.shipments",
+    "description": "Outbound shipments with tracking information and delivery status",
+    "key_columns": ["shipment_id", "order_id", "carrier", "tracking_number", "ship_date", "delivery_date", "status"]
+  },
+  {
+    "table_name": "logistics.shipping.carriers",
+    "description": "Shipping carrier information and rate tables",
+    "key_columns": ["carrier_id", "carrier_name", "service_level", "base_rate", "active"]
+  },
+  {
+    "table_name": "iot.sensors.readings",
+    "description": "Time-series sensor data from IoT devices including temperature, humidity, and pressure",
+    "key_columns": ["reading_id", "sensor_id", "timestamp", "temperature", "humidity", "pressure"]
+  },
+  {
+    "table_name": "iot.sensors.devices",
+    "description": "IoT device registry with locations and configuration",
+    "key_columns": ["sensor_id", "device_type", "location", "installation_date", "status", "firmware_version"]
+  },
+  {
+    "table_name": "social.users.profiles",
+    "description": "Social media user profiles with bio and account metadata",
+    "key_columns": ["user_id", "username", "display_name", "bio", "created_at", "follower_count"]
+  },
+  {
+    "table_name": "social.content.posts",
+    "description": "User-generated posts with content, timestamps, and engagement metrics",
+    "key_columns": ["post_id", "user_id", "content", "created_at", "like_count", "comment_count"]
+  },
+  {
+    "table_name": "social.content.comments",
+    "description": "Comments on posts with threading support",
+    "key_columns": ["comment_id", "post_id", "user_id", "parent_comment_id", "content", "created_at"]
+  }
+]
