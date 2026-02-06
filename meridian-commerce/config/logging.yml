@@ -1,0 +1,203 @@
+# Meridian Commerce Platform - Logging Configuration
+# 
+# Uses structlog for structured JSON logging in production
+# and rich formatting for development.
+#
+# Log levels by environment:
+# - development: DEBUG
+# - staging: INFO
+# - production: INFO (with DEBUG available via feature flag)
+
+version: 1
+disable_existing_loggers: false
+
+formatters:
+  standard:
+    format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    datefmt: "%Y-%m-%d %H:%M:%S"
+  
+  json:
+    class: pythonjsonlogger.jsonlogger.JsonFormatter
+    format: "%(asctime)s %(levelname)s %(name)s %(message)s"
+    datefmt: "%Y-%m-%dT%H:%M:%S%z"
+    # Additional fields added by our logging setup:
+    # - request_id: unique ID for request tracing
+    # - merchant_id: merchant context when available
+    # - user_id: user context when available
+    # - trace_id: OpenTelemetry trace ID
+    # - span_id: OpenTelemetry span ID
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: DEBUG
+    formatter: standard
+    stream: ext://sys.stdout
+  
+  console_json:
+    class: logging.StreamHandler
+    level: DEBUG
+    formatter: json
+    stream: ext://sys.stdout
+  
+  file:
+    class: logging.handlers.RotatingFileHandler
+    level: INFO
+    formatter: json
+    filename: /var/log/meridian/app.log
+    maxBytes: 104857600  # 100MB
+    backupCount: 5
+    encoding: utf-8
+  
+  error_file:
+    class: logging.handlers.RotatingFileHandler
+    level: ERROR
+    formatter: json
+    filename: /var/log/meridian/error.log
+    maxBytes: 104857600  # 100MB
+    backupCount: 10
+    encoding: utf-8
+  
+  # Beacon events go to a separate log for debugging
+  beacon_file:
+    class: logging.handlers.RotatingFileHandler
+    level: DEBUG
+    formatter: json
+    filename: /var/log/meridian/beacon.log
+    maxBytes: 524288000  # 500MB - high volume
+    backupCount: 3
+    encoding: utf-8
+  
+  # Catalyst model serving logs
+  catalyst_file:
+    class: logging.handlers.RotatingFileHandler
+    level: INFO
+    formatter: json
+    filename: /var/log/meridian/catalyst.log
+    maxBytes: 104857600  # 100MB
+    backupCount: 5
+    encoding: utf-8
+
+loggers:
+  # Root logger
+  "":
+    level: INFO
+    handlers: [console_json, file, error_file]
+    propagate: false
+  
+  # Application loggers
+  src:
+    level: DEBUG
+    handlers: [console_json, file]
+    propagate: false
+  
+  # Beacon system - high volume, separate log
+  src.beacon:
+    level: INFO  # DEBUG in dev only
+    handlers: [beacon_file]
+    propagate: false
+  
+  # Pulse analytics
+  src.pulse:
+    level: INFO
+    handlers: [console_json, file]
+    propagate: false
+  
+  # Catalyst recommendations
+  src.catalyst:
+    level: INFO
+    handlers: [catalyst_file]
+    propagate: false
+  
+  # Forge pipelines
+  src.forge:
+    level: INFO
+    handlers: [console_json, file]
+    propagate: false
+  
+  # API requests
+  src.api:
+    level: INFO
+    handlers: [console_json, file]
+    propagate: false
+  
+  # Database queries (set to WARNING to reduce noise)
+  sqlalchemy:
+    level: WARNING
+    handlers: [console_json]
+    propagate: false
+  
+  sqlalchemy.engine:
+    level: WARNING
+    handlers: [console_json]
+    propagate: false
+  
+  # Third-party libraries
+  uvicorn:
+    level: INFO
+    handlers: [console_json]
+    propagate: false
+  
+  uvicorn.access:
+    level: INFO
+    handlers: [console_json]
+    propagate: false
+  
+  uvicorn.error:
+    level: INFO
+    handlers: [console_json, error_file]
+    propagate: false
+  
+  httpx:
+    level: WARNING
+    handlers: [console_json]
+    propagate: false
+  
+  httpcore:
+    level: WARNING
+    handlers: [console_json]
+    propagate: false
+  
+  # Airflow (when running pipelines)
+  airflow:
+    level: INFO
+    handlers: [console_json, file]
+    propagate: false
+  
+  # Celery workers
+  celery:
+    level: INFO
+    handlers: [console_json, file]
+    propagate: false
+
+# Development overrides
+# These are applied when MERIDIAN_ENV=development
+development:
+  handlers:
+    console:
+      formatter: standard  # Use human-readable format in dev
+  loggers:
+    "":
+      level: DEBUG
+      handlers: [console]
+    src:
+      level: DEBUG
+      handlers: [console]
+    src.beacon:
+      level: DEBUG
+      handlers: [console]
+    sqlalchemy.engine:
+      level: INFO  # Show SQL in dev
+
+# Production overrides
+# Stricter logging, no file handlers (use log aggregation)
+production:
+  handlers:
+    console_json:
+      level: INFO
+  loggers:
+    "":
+      handlers: [console_json]
+    src:
+      level: INFO
+      handlers: [console_json]

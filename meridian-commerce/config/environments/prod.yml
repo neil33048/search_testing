@@ -1,0 +1,184 @@
+# Meridian Commerce Platform - Production Environment Configuration
+#
+# CRITICAL: This file contains production settings.
+# Changes require approval from Platform team lead.
+#
+# Last reviewed: 2024-01-10 by @platform-lead
+# Next review: 2024-04-10
+
+environment: production
+
+# Security settings
+debug: false
+log_level: INFO
+
+# API configuration
+api:
+  host: "0.0.0.0"
+  port: 8000
+  reload: false
+  workers: 8  # Adjusted based on ECS task size (4 vCPU)
+
+# Database - Aurora PostgreSQL cluster
+# Primary endpoint for writes, reader endpoint for read replicas
+database:
+  host: meridian-prod-cluster.cluster-xxxx.us-west-2.rds.amazonaws.com
+  port: 5432
+  name: meridian_prod
+  user: meridian_app  # IAM auth in production
+  pool_size: 20
+  max_overflow: 40
+  echo: false
+  
+  # Read replicas for analytics queries
+  # Used by Pulse and Forge for heavy reads
+  read_replicas:
+    - meridian-prod-cluster.cluster-ro-xxxx.us-west-2.rds.amazonaws.com:5432
+
+# Redis - ElastiCache cluster
+redis:
+  host: meridian-prod.xxxx.0001.usw2.cache.amazonaws.com
+  port: 6379
+  db: 0
+  max_connections: 500
+  socket_timeout: 2.0
+
+# Beacon - production event collection
+beacon:
+  strict_validation: true
+  allow_unknown_events: false
+  batch_size: 1000
+  flush_interval_ms: 5000
+  kinesis_stream: meridian-events-prod
+  rate_limit_per_second: 50000
+
+# Pulse - production analytics
+pulse:
+  dashboard_cache_ttl: 300
+  realtime_enabled: true
+  clickhouse_host: meridian-clickhouse-prod.internal
+  clickhouse_port: 8123
+  aggregation_window_seconds: 60
+
+# Catalyst - production recommendation serving
+catalyst:
+  serving_endpoint: "http://catalyst-serving.internal:8501"
+  model_version: "v2.3.1"
+  cache_ttl: 3600
+  fallback_strategy: "hybrid"
+  min_interactions: 100
+  timeout_seconds: 0.5
+  batch_size: 64
+
+# Forge - production pipeline settings
+forge:
+  parallelism: 8
+  checkpoint_enabled: true
+  checkpoint_interval: 5000
+  warehouse_type: snowflake
+  max_retries: 5
+  retry_delay_seconds: 120
+
+# Customer tier SLAs
+# IMPORTANT: These are contractual commitments
+tiers:
+  platinum:
+    gmv_threshold: 2000000
+    sla_target: 99.99
+    support: dedicated_csm
+    features: [custom_integrations, priority_support, custom_dashboards]
+  gold:
+    gmv_threshold: 500000
+    sla_target: 99.95
+    support: priority
+    features: [custom_dashboards, priority_support]
+  silver:
+    gmv_threshold: 100000
+    sla_target: 99.9
+    support: standard
+    features: [catalyst_recommendations]
+  bronze:
+    gmv_threshold: 0
+    sla_target: 99.5
+    support: community
+    features: [basic_analytics]
+
+# Feature flags - production values
+features:
+  new_checkout_flow: true
+  catalyst_v3_model: false  # Waiting for A/B test results
+  enhanced_analytics: true
+  dark_mode: true
+  beta_dashboard: false
+
+# CORS - production domains only
+cors:
+  origins:
+    - "https://dashboard.meridian-commerce.com"
+    - "https://app.meridian-commerce.com"
+    - "https://admin.meridian-commerce.com"
+
+# External services - production credentials via secrets manager
+external:
+  stripe:
+    mode: live
+  sendgrid:
+    sandbox: false
+  segment:
+    enabled: true
+
+# Monitoring - full observability
+monitoring:
+  prometheus:
+    enabled: true
+    port: 9090
+  tracing:
+    enabled: true
+    sampling_rate: 0.1  # 10% of requests
+    exporter: otlp
+    endpoint: "http://otel-collector.internal:4317"
+  sentry:
+    enabled: true
+    environment: production
+    traces_sample_rate: 0.1
+
+# Alerting thresholds
+alerts:
+  error_rate_threshold: 0.01  # 1%
+  latency_p99_threshold_ms: 500
+  cpu_threshold: 80
+  memory_threshold: 85
+  disk_threshold: 90
+  
+  # Component-specific
+  beacon_lag_threshold_seconds: 60
+  pulse_staleness_threshold_seconds: 120
+  catalyst_latency_p99_ms: 50
+
+# Rate limiting
+rate_limits:
+  api:
+    requests_per_minute: 1000
+    burst: 100
+  beacon:
+    events_per_second: 50000
+  
+  # Per-tier overrides
+  tier_multipliers:
+    platinum: 10
+    gold: 5
+    silver: 2
+    bronze: 1
+
+# Maintenance windows
+# Used by deployment scripts and alerting
+maintenance:
+  # Weekly maintenance window (UTC)
+  window_start: "Sunday 06:00"
+  window_end: "Sunday 08:00"
+  
+  # Scheduled jobs that run during maintenance
+  jobs:
+    - vacuum_analyze
+    - index_rebuild
+    - cache_warmup

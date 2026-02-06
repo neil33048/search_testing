@@ -1,0 +1,258 @@
+# Meridian Commerce Platform - Docker Compose
+# Local development environment with all services
+
+version: "3.9"
+
+services:
+  # ==========================================================================
+  # Application Services
+  # ==========================================================================
+  
+  app:
+    build:
+      context: .
+      target: development
+    container_name: meridian-app
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src:cached
+      - ./config:/app/config:cached
+      - ./tests:/app/tests:cached
+    environment:
+      - MERIDIAN_ENV=development
+      - MERIDIAN_DEBUG=true
+      - MERIDIAN_DB_HOST=postgres
+      - MERIDIAN_REDIS_HOST=redis
+      - CLICKHOUSE_HOST=clickhouse
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - meridian-network
+    restart: unless-stopped
+
+  # Celery worker for async tasks
+  worker:
+    build:
+      context: .
+      target: development
+    container_name: meridian-worker
+    command: celery -A src.core.celery_app worker --loglevel=info
+    volumes:
+      - ./src:/app/src:cached
+    environment:
+      - MERIDIAN_ENV=development
+      - MERIDIAN_DB_HOST=postgres
+      - MERIDIAN_REDIS_HOST=redis
+    depends_on:
+      - app
+      - redis
+    networks:
+      - meridian-network
+    restart: unless-stopped
+
+  # Celery beat for scheduled tasks
+  scheduler:
+    build:
+      context: .
+      target: development
+    container_name: meridian-scheduler
+    command: celery -A src.core.celery_app beat --loglevel=info
+    volumes:
+      - ./src:/app/src:cached
+    environment:
+      - MERIDIAN_ENV=development
+      - MERIDIAN_REDIS_HOST=redis
+    depends_on:
+      - worker
+    networks:
+      - meridian-network
+    restart: unless-stopped
+
+  # ==========================================================================
+  # Data Stores
+  # ==========================================================================
+  
+  postgres:
+    image: postgres:15-alpine
+    container_name: meridian-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: meridian
+      POSTGRES_PASSWORD: meridian_dev
+      POSTGRES_DB: meridian_dev
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U meridian -d meridian_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - meridian-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: meridian-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - meridian-network
+
+  # ClickHouse for Pulse real-time analytics
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.12
+    container_name: meridian-clickhouse
+    ports:
+      - "8123:8123"  # HTTP
+      - "9000:9000"  # Native
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - ./config/clickhouse:/etc/clickhouse-server/config.d
+    environment:
+      CLICKHOUSE_DB: pulse
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ""
+    networks:
+      - meridian-network
+
+  # ==========================================================================
+  # Pipeline Infrastructure
+  # ==========================================================================
+  
+  # Airflow for DAG orchestration (simplified setup)
+  airflow-webserver:
+    image: apache/airflow:2.8.0-python3.11
+    container_name: meridian-airflow-webserver
+    command: webserver
+    ports:
+      - "8080:8080"
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres-airflow:5432/airflow
+      - AIRFLOW__CORE__DAGS_FOLDER=/opt/airflow/dags
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false
+      - AIRFLOW__WEBSERVER__EXPOSE_CONFIG=true
+    volumes:
+      - ./pipelines/airflow/dags:/opt/airflow/dags
+      - airflow-logs:/opt/airflow/logs
+    depends_on:
+      postgres-airflow:
+        condition: service_healthy
+    networks:
+      - meridian-network
+
+  airflow-scheduler:
+    image: apache/airflow:2.8.0-python3.11
+    container_name: meridian-airflow-scheduler
+    command: scheduler
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres-airflow:5432/airflow
+      - AIRFLOW__CORE__DAGS_FOLDER=/opt/airflow/dags
+    volumes:
+      - ./pipelines/airflow/dags:/opt/airflow/dags
+      - airflow-logs:/opt/airflow/logs
+    depends_on:
+      - airflow-webserver
+    networks:
+      - meridian-network
+
+  postgres-airflow:
+    image: postgres:15-alpine
+    container_name: meridian-postgres-airflow
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-airflow-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - meridian-network
+
+  # ==========================================================================
+  # Monitoring & Observability
+  # ==========================================================================
+  
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: meridian-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - meridian-network
+
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: meridian-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./config/grafana/dashboards:/etc/grafana/provisioning/dashboards
+    depends_on:
+      - prometheus
+    networks:
+      - meridian-network
+
+  # Jaeger for distributed tracing
+  jaeger:
+    image: jaegertracing/all-in-one:1.53
+    container_name: meridian-jaeger
+    ports:
+      - "16686:16686"  # UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - meridian-network
+
+# ==========================================================================
+# Networks
+# ==========================================================================
+
+networks:
+  meridian-network:
+    driver: bridge
+    name: meridian-network
+
+# ==========================================================================
+# Volumes
+# ==========================================================================
+
+volumes:
+  postgres-data:
+  postgres-airflow-data:
+  redis-data:
+  clickhouse-data:
+  airflow-logs:
+  prometheus-data:
+  grafana-data:

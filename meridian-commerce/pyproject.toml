@@ -1,0 +1,181 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "meridian-commerce"
+version = "2.14.0"
+description = "Enterprise e-commerce analytics platform"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "Proprietary"}
+authors = [
+    {name = "Meridian Commerce Platform Team", email = "platform@meridian-commerce.com"}
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "sqlalchemy>=2.0.25",
+    "asyncpg>=0.29.0",
+    "redis>=5.0.1",
+    "httpx>=0.26.0",
+    "structlog>=24.1.0",
+    "python-json-logger>=2.0.7",
+    "prometheus-client>=0.19.0",
+    "opentelemetry-api>=1.22.0",
+    "opentelemetry-sdk>=1.22.0",
+    "opentelemetry-instrumentation-fastapi>=0.43b0",
+    "pandas>=2.1.4",
+    "numpy>=1.26.3",
+    "scikit-learn>=1.4.0",
+    "scipy>=1.12.0",
+    "pyarrow>=15.0.0",
+    "boto3>=1.34.0",
+    "google-cloud-bigquery>=3.17.0",
+    "snowflake-connector-python>=3.6.0",
+    "dbt-core>=1.7.0",
+    "apache-airflow>=2.8.0",
+    "celery>=5.3.6",
+    "cryptography>=42.0.0",
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "tenacity>=8.2.3",
+    "click>=8.1.7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.4",
+    "pytest-asyncio>=0.23.3",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "pytest-xdist>=3.5.0",
+    "hypothesis>=6.92.0",
+    "factory-boy>=3.3.0",
+    "faker>=22.0.0",
+    "ruff>=0.1.13",
+    "mypy>=1.8.0",
+    "pre-commit>=3.6.0",
+    "ipython>=8.20.0",
+    "ipdb>=0.13.13",
+]
+
+ml = [
+    "torch>=2.1.2",
+    "transformers>=4.36.2",
+    "sentence-transformers>=2.2.2",
+    "lightgbm>=4.2.0",
+    "xgboost>=2.0.3",
+    "optuna>=3.5.0",
+    "mlflow>=2.9.2",
+]
+
+[project.scripts]
+meridian = "src.cli:main"
+forge = "src.forge.cli:main"
+beacon = "src.beacon.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/meridian-commerce/platform"
+Documentation = "https://docs.meridian-commerce.com"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "ARG", # flake8-unused-arguments
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # do not perform function calls in argument defaults
+    "C901",   # too complex
+    "ARG001", # unused function argument (needed for API compatibility)
+]
+
+[tool.ruff.per-file-ignores]
+"tests/*" = ["ARG", "S101"]
+"src/forge/extractors/*" = ["ARG001"]  # Extractors use consistent interface
+
+[tool.ruff.isort]
+known-first-party = ["src"]
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+strict_optional = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = [
+    "redis.*",
+    "celery.*",
+    "airflow.*",
+    "snowflake.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = [
+    "-ra",
+    "-q",
+    "--strict-markers",
+    "--tb=short",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests requiring external services",
+    "catalyst: marks tests for the recommendation engine",
+    "forge: marks tests for data pipelines",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning:sqlalchemy.*:",
+]
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = [
+    "src/*/cli.py",
+    "src/forge/airflow/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
+fail_under = 80
