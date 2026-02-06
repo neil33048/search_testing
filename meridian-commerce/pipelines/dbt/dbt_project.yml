@@ -1,0 +1,91 @@
+# Meridian Commerce - dbt Project Configuration
+# 
+# This dbt project manages all data transformations for the
+# Meridian Commerce analytics platform.
+#
+# Project structure:
+# - staging/: Raw data cleaning and typing
+# - intermediate/: Business logic transformations
+# - marts/: Final dimensional models for analytics
+
+name: 'meridian_commerce'
+version: '1.0.0'
+config-version: 2
+
+profile: 'meridian'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Variable definitions
+vars:
+  # Date range for incremental models
+  start_date: '2023-01-01'
+  
+  # Customer tier thresholds (monthly GMV in USD)
+  tier_platinum_threshold: 2000000
+  tier_gold_threshold: 500000
+  tier_silver_threshold: 100000
+  
+  # Legacy tier mapping for backwards compatibility
+  # tier1 = platinum, tier2 = gold, tier3 = silver, tier4 = bronze
+  legacy_tier_mapping:
+    tier1: 'platinum'
+    tier2: 'gold'
+    tier3: 'silver'
+    tier4: 'bronze'
+  
+  # Churn definition (days since last order)
+  churn_threshold_days: 180
+  at_risk_threshold_days: 90
+
+# Model configurations
+models:
+  meridian_commerce:
+    # Default configurations
+    +materialized: view
+    +schema: analytics
+    
+    staging:
+      +materialized: view
+      +schema: staging
+      
+    intermediate:
+      +materialized: ephemeral
+      
+    marts:
+      +materialized: table
+      +schema: marts
+      
+      core:
+        +schema: marts_core
+        
+      finance:
+        +schema: marts_finance
+        
+      marketing:
+        +schema: marts_marketing
+
+# Seed configurations
+seeds:
+  meridian_commerce:
+    +schema: seeds
+
+# Snapshot configurations
+snapshots:
+  meridian_commerce:
+    +target_schema: snapshots
+
+# Test configurations
+tests:
+  +severity: warn
+  +store_failures: true

@@ -1,0 +1,95 @@
+# Meridian Commerce Platform - Development Environment Configuration
+#
+# This file contains development-specific overrides.
+# Base configuration is in config/settings.py
+#
+# Usage: Set MERIDIAN_ENV=development to activate
+
+environment: development
+
+# Debug settings
+debug: true
+log_level: DEBUG
+
+# API configuration
+api:
+  host: "0.0.0.0"
+  port: 8000
+  reload: true
+  workers: 1
+  
+# Database - local PostgreSQL
+database:
+  host: localhost
+  port: 5432
+  name: meridian_dev
+  user: meridian
+  password: meridian_dev
+  pool_size: 5
+  echo: true  # Log SQL queries
+
+# Redis - local instance
+redis:
+  host: localhost
+  port: 6379
+  db: 0
+
+# Beacon - relaxed validation for testing
+beacon:
+  strict_validation: false
+  allow_unknown_events: true
+  batch_size: 100
+  flush_interval_ms: 1000
+
+# Pulse - shorter cache TTL for development
+pulse:
+  dashboard_cache_ttl: 30
+  realtime_enabled: true
+  clickhouse_host: localhost
+  clickhouse_port: 8123
+
+# Catalyst - use local model server
+catalyst:
+  serving_endpoint: "http://localhost:8501"
+  cache_ttl: 60
+  fallback_strategy: "popularity"
+  min_interactions: 10  # Lower threshold for testing
+
+# Forge - limited parallelism
+forge:
+  parallelism: 2
+  checkpoint_enabled: false
+  warehouse_type: postgres
+
+# Feature flags - enable experimental features
+features:
+  new_checkout_flow: true
+  catalyst_v3_model: false
+  enhanced_analytics: true
+  dark_mode: true
+
+# CORS - allow local frontend
+cors:
+  origins:
+    - "http://localhost:3000"
+    - "http://localhost:5173"  # Vite dev server
+    - "http://127.0.0.1:3000"
+
+# External services - use test/sandbox modes
+external:
+  stripe:
+    mode: test
+  sendgrid:
+    sandbox: true
+  segment:
+    enabled: false
+
+# Monitoring - minimal in development
+monitoring:
+  prometheus:
+    enabled: true
+    port: 9090
+  tracing:
+    enabled: false
+  sentry:
+    enabled: false
